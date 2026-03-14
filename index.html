@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrackIt — Live Bus Tracking</title>
+  
+  <!-- External CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap" rel="stylesheet" />
+  
+  <!-- Application CSS -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="s-header">
+      <a class="nav-brand" href="#">
+        <div class="nav-brand-icon"><i class="fa fa-route"></i></div>
+        <span class="nav-brand-name">Track<span>It</span></span>
+      </a>
+      <div class="live-chip"><div class="dot"></div><span id="liveCount">CDO Live</span></div>
+      <div class="hdr-spacer"></div>
+      <div class="loc-pill"><i class="fa fa-location-dot"></i> CDO City</div>
+      <button class="collapse-btn" id="collapseBtn"><i class="fa fa-bars"></i></button>
+    </div>
+    
+    <div class="db-status" id="dbStatus">
+      <div class="db-dot" id="dbDot"></div>
+      <span id="dbStatusText">Connecting to Supabase…</span>
+      <span style="margin-left:auto;font-size:9px;opacity:.6" id="dbMode">Connecting…</span>
+    </div>
+    
+    <div class="s-search">
+      <div class="srch-wrap">
+        <i class="fa fa-magnifying-glass srch-ico"></i>
+        <input type="text" class="srch-input" id="globalSearch" placeholder="Search places in Cagayan de Oro…" autocomplete="off" />
+        <i class="fa fa-circle-notch srch-spinner" id="srchSpinner"></i>
+        <button class="srch-clear" id="srchClear"><i class="fa fa-xmark"></i></button>
+        <div class="autocomplete-drop" id="acDrop"></div>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" data-tab="live"><i class="fa fa-satellite-dish"></i> Live<span class="tab-badge" id="tabBusCount">0</span></button>
+      <button class="tab" data-tab="routes"><i class="fa fa-route"></i> Routes<span class="tab-badge" id="tabRouteCount">0</span></button>
+      <button class="tab" data-tab="schedule"><i class="fa fa-clock"></i> Operating Hours</button>
+    </div>
+    
+    <div class="content">
+      <!-- Live Tab -->
+      <div class="tab-pane active" id="tab-live">
+        <div class="notif-banner" id="notifBanner">
+          <div class="notif-inner">
+            <div class="notif-icon"><i class="fa fa-bell"></i></div>
+            <div class="notif-text">
+              <div class="notif-title" id="notifTitle"></div>
+              <div class="notif-sub" id="notifSub"></div>
+            </div>
+            <button class="notif-close" onclick="document.getElementById('notifBanner').classList.remove('show')"><i class="fa fa-xmark"></i></button>
+          </div>
+        </div>
+        
+        <div id="searchResultsBlock" style="display:none">
+          <div class="eyebrow"><i class="fa fa-magnifying-glass" style="font-size:9px"></i> Search Results · CDO</div>
+          
+          <div id="suggestedRoutesPanel" style="display:none">
+            <div class="suggest-panel">
+              <div class="suggest-panel-hdr">
+                <div class="suggest-panel-hdr-icon route"><i class="fa fa-route"></i></div>
+                <div class="suggest-panel-hdr-text">
+                  <div class="suggest-panel-hdr-title">Suggested Routes</div>
+                  <div class="suggest-panel-hdr-sub">Routes passing within 200 m of this location</div>
+                </div>
+                <span class="suggest-panel-hdr-badge" id="suggestedRoutesCount">0 routes</span>
+              </div>
+              <div id="suggestedRoutesList"></div>
+            </div>
+          </div>
+          
+          <div id="nearestVehiclesPanel" style="display:none">
+            <div class="suggest-panel">
+              <div class="suggest-panel-hdr">
+                <div class="suggest-panel-hdr-icon bus"><i class="fa fa-bus"></i></div>
+                <div class="suggest-panel-hdr-text">
+                  <div class="suggest-panel-hdr-title">Nearest Live Vehicles</div>
+                  <div class="suggest-panel-hdr-sub">In-service buses closest to this location</div>
+                </div>
+                <span class="suggest-panel-hdr-badge" id="nearestVehiclesCount">0 vehicles</span>
+              </div>
+              <div id="nearestVehiclesList"></div>
+            </div>
+          </div>
+          
+          <div id="searchResultsList"></div>
+        </div>
+        
+        <div id="liveDefaultBlock">
+          <div class="eyebrow success"><i class="fa fa-satellite-dish" style="font-size:9px"></i> In-Service Vehicles · Live</div>
+          <div class="sec-label"><i class="fa fa-bus"></i> Active Vehicles (In Service)</div>
+          <div id="busCards"><div class="loading-block"><div class="spinner"></div>Loading from Supabase…</div></div>
+        </div>
+      </div>
+      
+<!-- Routes Tab -->
+<div class="tab-pane" id="tab-routes">
+  <button class="use-loc-btn" id="useLocBtn">
+    <i class="fa fa-location-arrow"></i><span>Use My Current Location</span>
+  </button>
+  <div class="input-pair">
+    <div class="inp-wrap">
+      <input type="text" class="route-inp" id="routeOrigin" placeholder="Starting point" />
+    </div>
+    <div class="inp-divider">
+      <div class="inp-div-line"></div>
+      <button class="swap-btn" id="swapBtn" title="Reverse route">
+        <i class="fa fa-arrows-up-down"></i>
+      </button>
+      <div class="inp-div-line"></div>
+    </div>
+    <div class="inp-wrap">
+      <input type="text" class="route-inp" id="routeDest" placeholder="Destination" />
+    </div>
+  </div>
+
+  <!-- Hidden until both fields are filled -->
+  <button class="get-directions-btn" id="getDirectionsBtn" style="display:none;" disabled>
+    <i class="fa fa-diamond-turn-right"></i>
+    <span>Get Directions</span>
+  </button>
+
+  <div class="sec-label"><i class="fa fa-route"></i> Active Routes — click to view on map</div>
+  <div id="routeCards"><div class="loading-block"><div class="spinner"></div>Loading routes…</div></div>
+</div>
+      
+      <!-- Operating Hours Tab -->
+      <div class="tab-pane" id="tab-schedule">
+        <div class="eyebrow warn"><i class="fa fa-clock" style="font-size:9px"></i> Route Operating Hours</div>
+        <div class="sec-label"><i class="fa fa-calendar-days"></i> Schedule by Route</div>
+        <div id="scheduleList"><div class="loading-block"><div class="spinner"></div>Loading operating hours…</div></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Map Controls -->
+  <button class="float-toggle" id="floatToggle" style="display:none"><i class="fa fa-bars"></i></button>
+  <div id="map"></div>
+  
+  <div class="map-ctrls">
+    <button class="map-btn" id="zoomIn"><i class="fa fa-plus"></i></button>
+    <button class="map-btn" id="zoomOut"><i class="fa fa-minus"></i></button>
+    <button class="map-btn" id="locateMe"><i class="fa fa-crosshairs"></i></button>
+    <button class="map-btn" id="layerBtn"><i class="fa fa-layer-group"></i></button>
+    <button class="map-btn" id="refreshBtn"><i class="fa fa-rotate"></i></button>
+  </div>
+  
+  <button class="fab" id="fab"><i class="fa fa-plus"></i></button>
+  
+  <div class="map-info-card" id="mapInfoCard">
+    <button class="mic-close" onclick="closeMapInfo()"><i class="fa fa-xmark"></i></button>
+    <div class="mic-title" id="micTitle">—</div>
+    <div class="mic-sub" id="micSub">—</div>
+    <div class="mic-speed" id="micSpeed" style="display:none"></div>
+    <div class="mic-actions">
+      <button class="mic-btn" id="micDirections"><i class="fa fa-route"></i> Directions</button>
+      <button class="mic-btn" id="micShare"><i class="fa fa-share-nodes"></i> Share</button>
+    </div>
+  </div>
+  
+  <div class="toast" id="toast"><i id="toastIco"></i><span id="toastMsg"></span></div>
+</div>
+
+<!-- External Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Application Scripts -->
+<script src="config.js"></script>
+<script src="utils.js"></script>
+<script src="map.js"></script>
+<script src="search.js"></script>
+<script src="sidebar.js"></script>
+<script src="live.js"></script>
+<script src="route.js"></script>
+<script src="operating-hour.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
