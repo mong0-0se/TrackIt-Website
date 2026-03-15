@@ -11,7 +11,7 @@
  * @returns {Number} Distance in kilometers
  */
 function haversine([lat1, lon1], [lat2, lon2]) {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   
@@ -49,7 +49,6 @@ function minDistToPolyline(point, coords) {
  * @returns {Number} Distance in kilometers
  */
 function distToSegment(P, A, B) {
-  // Approximate scaling factor for longitude at this latitude
   const scale = Math.cos(P[0] * Math.PI / 180);
   
   const px = P[1] * scale, py = P[0];
@@ -144,7 +143,6 @@ function switchTab(name) {
     p.classList.toggle('active', p.id === `tab-${name}`)
   );
   
-  // Special handling for routes tab
   if (name === 'routes') {
     setTimeout(() => {
       if (typeof fitAllRoutes === 'function') {
@@ -161,3 +159,59 @@ function toggleSidebar() {
   const collapsed = document.getElementById('sidebar').classList.toggle('collapsed');
   document.getElementById('floatToggle').style.display = collapsed ? 'flex' : 'none';
 }
+
+// ── Geocode Utilities ──
+
+const geocodeCache = {};
+
+/**
+ * Check if a string looks like coordinates
+ * @param {String} str
+ * @returns {Boolean}
+ */
+function isCoordString(str) {
+  if (!str) return false;
+  return /^-?\d+\.?\d*,\s*-?\d+\.?\d*$/.test(str.trim());
+}
+
+/**
+ * Reverse geocode a coordinate string to a place name
+ * @param {String} coordStr - "lat, lng" string
+ * @returns {Promise<String>} Place name or original string
+ */
+async function reverseGeocode(coordStr) {
+  if (!coordStr) return coordStr;
+  if (!isCoordString(coordStr)) return coordStr;
+  if (geocodeCache[coordStr]) return geocodeCache[coordStr];
+
+  const [lat, lng] = coordStr.split(',').map(s => s.trim());
+
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
+      { headers: { 'User-Agent': 'TrackItCDO/1.0' } }
+    );
+    const data = await res.json();
+    const a = data.address || {};
+    const label = a.suburb || a.neighbourhood || a.village || a.town || a.city || a.road || coordStr;
+    geocodeCache[coordStr] = label;
+    return label;
+  } catch {
+    geocodeCache[coordStr] = coordStr;
+    return coordStr;
+  }
+}
+
+/**
+ * Get cached label or reverse geocode
+ * @param {String} coord
+ * @returns {Promise<String>}
+ */
+async function getLabel(coord) {
+  if (!coord) return coord;
+  if (geocodeCache[coord]) return geocodeCache[coord];
+  return reverseGeocode(coord);
+}
+
+window.reverseGeocode = reverseGeocode;
+window.getLabel = getLabel;

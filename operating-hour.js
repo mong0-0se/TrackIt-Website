@@ -4,6 +4,21 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 /**
+ * Convert military time (HH:MM) to AM/PM format
+ * @param {String} time - Time string in HH:MM format
+ * @returns {String} Time in AM/PM format
+ */
+function formatAmPm(time) {
+  if (!time) return 'Not set';
+  const [hourStr, minuteStr] = time.split(':');
+  let hour = parseInt(hourStr);
+  const minute = minuteStr || '00';
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12 || 12;
+  return `${hour}:${minute} ${ampm}`;
+}
+
+/**
  * Fetch operating hours for active routes
  * @returns {Promise<Array>} Array of routes with operating hours
  */
@@ -22,7 +37,7 @@ async function fetchOperatingHours() {
  * Render operating hours to sidebar
  * @param {Array} routes - Array of route objects
  */
-function renderOperatingHours(routes) {
+async function renderOperatingHours(routes) {
   const container = document.getElementById('scheduleList');
   
   if (!routes.length) {
@@ -33,11 +48,18 @@ function renderOperatingHours(routes) {
     </div>`;
     return;
   }
-  
-  container.innerHTML = routes.map(r => {
+
+  // Geocode all origins and destinations in parallel
+  const geocoded = await Promise.all(routes.map(async r => ({
+    ...r,
+    originLabel: await getLabel(r.origin),
+    destLabel: await getLabel(r.destination)
+  })));
+
+  container.innerHTML = geocoded.map(r => {
     const color = r.color || '#2563eb';
-    const firstTrip = r.first_trip || 'Not set';
-    const lastTrip = r.last_trip || 'Not set';
+    const firstTrip = formatAmPm(r.first_trip);
+    const lastTrip = formatAmPm(r.last_trip);
     
     return `<div class="hours-card">
       <div class="hours-card-header">
@@ -46,7 +68,7 @@ function renderOperatingHours(routes) {
           <div>
             <div class="hours-route-name">${r.route_name}</div>
             <div class="hours-route-path">
-              <i class="fa fa-route"></i> ${r.origin} → ${r.destination}
+              <i class="fa fa-route"></i> ${r.originLabel || r.origin} → ${r.destLabel || r.destination}
             </div>
           </div>
         </div>

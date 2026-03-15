@@ -105,40 +105,38 @@ function renderBusData(positions) {
     const v = pos.vehicle || {};
     const r = v.route || {};
     const d = v.driver || {};
-    const color = getDeviceColor(pos.device_id);
+    const color = '#2563eb'; 
     const name = v.vehicle_name || pos.device_name || pos.device_id;
     const speed = pos.speed_kmh != null ? `${parseFloat(pos.speed_kmh).toFixed(1)} km/h` : 'N/A';
-    const route = r.route_name ? `${r.origin} → ${r.destination}` : 'No route assigned';
-    const hdg = pos.heading != null ? `${Math.round(pos.heading)}°` : '—';
     const updAt = pos.updated_at ? new Date(pos.updated_at).toLocaleTimeString() : '—';
     
-    return `<div class="card active-bus" onclick="focusBus('${pos.device_id}')">
-      <div class="card-row">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="bus-icon-wrap" style="background:${color}20;color:${color}">
-            <i class="fa fa-bus"></i>
-          </div>
-          <div>
-            <div class="card-title">${name}</div>
-            <div class="card-sub">${v.plate_number || '—'}</div>
-          </div>
-        </div>
-        <span class="badge green">in_service</span>
+return `<div class="card active-bus" onclick="focusBus('${pos.device_id}')">
+  <div class="card-row">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="bus-icon-wrap" style="background:${color}20;color:${color}">
+        <i class="fa fa-bus"></i>
       </div>
-      <div class="card-row">
-        <div class="card-sub" style="display:flex;align-items:center;gap:5px">
-          <i class="fa fa-route" style="font-size:9px;color:#94a3b8"></i> ${route}
-        </div>
+      <div>
+        <div class="card-title" style="font-size:15px;font-weight:900;letter-spacing:-.4px">${v.plate_number || '—'}</div>
+        <div class="card-sub" style="font-weight:600;color:var(--text-second)">${name}</div>
       </div>
-      <div class="card-row" style="margin-bottom:0">
-        <div class="meta-row">
-          <div class="meta-item"><i class="fa fa-gauge-high"></i> ${speed}</div>
-          <div class="meta-item"><i class="fa fa-compass"></i> ${hdg}</div>
-          <div class="meta-item"><i class="fa fa-user"></i> ${d.name || 'Unassigned'}</div>
-          <div class="meta-item"><i class="fa fa-clock"></i> ${updAt}</div>
-        </div>
-      </div>
-    </div>`;
+    </div>
+    <span class="badge green">in_service</span>
+  </div>
+  <div class="card-row">
+    <div class="card-sub" style="display:flex;align-items:center;gap:5px">
+      <i class="fa fa-route" style="font-size:9px;color:#94a3b8"></i>
+      ${r.route_name || 'No route assigned'}
+    </div>
+  </div>
+  <div class="card-row" style="margin-bottom:0">
+    <div class="meta-row">
+      <div class="meta-item"><i class="fa fa-gauge-high"></i> ${speed}</div>
+      <div class="meta-item"><i class="fa fa-user"></i> ${d.name || 'Unassigned'}</div>
+      <div class="meta-item"><i class="fa fa-clock"></i> ${updAt}</div>
+    </div>
+  </div>
+</div>`;
   }).join('');
 }
 
@@ -168,7 +166,7 @@ function openBusInfo(pos) {
   const name = v.vehicle_name || pos.device_name || pos.device_id;
   
   document.getElementById('micTitle').textContent = 
-    `${name}${v.plate_number ? ' · ' + v.plate_number : ''}`;
+    `${v.plate_number || name}${v.plate_number ? ' · ' + name : ''}`;
   document.getElementById('micSub').textContent = 
     r.route_name ? `${r.origin} → ${r.destination}` : (d.name || 'No driver assigned');
   

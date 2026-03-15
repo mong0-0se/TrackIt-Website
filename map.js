@@ -3,18 +3,27 @@
    Handles Leaflet map initialization, layers, markers, and controls
    ══════════════════════════════════════════════════════════════════════════ */
 
+// ── MapTiler Key ──
+const MAPTILER_KEY = 'TwXfXAuVDsl00tVJKy8I';
+
 // ── Map Initialization ──
 const map = L.map('map', { zoomControl: false }).setView(CDO_CENTER, 14);
 
 // Map layers
-const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap',
-  maxZoom: 19
+const osmLayer = L.tileLayer(
+  `https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`, {
+  attribution: '© <a href="https://www.maptiler.com">MapTiler</a> © <a href="https://www.openstreetmap.org">OpenStreetMap</a>',
+  maxZoom: 20,
+  tileSize: 512,
+  zoomOffset: -1
 });
 
-const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-  attribution: '© Esri',
-  maxZoom: 19
+const satLayer = L.tileLayer(
+  `https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${MAPTILER_KEY}`, {
+  attribution: '© <a href="https://www.maptiler.com">MapTiler</a>',
+  maxZoom: 20,
+  tileSize: 512,
+  zoomOffset: -1
 });
 
 // Add default layer
@@ -38,7 +47,7 @@ let currentInfoPlace = null;
  * @returns {L.DivIcon} Leaflet divIcon
  */
 function makeBusIcon(deviceId, heading, isNew) {
-  const color = getDeviceColor(deviceId);
+  const color = '#0f1f3d';
   const hasHeading = heading != null;
   
   const popAnim = isNew ? 'animation:markerPop .4s cubic-bezier(.34,1.56,.64,1) both;' : '';

@@ -1135,6 +1135,21 @@ body {
   margin-top:1px; 
 }
 
+.route-path-clickable {
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 5px;
+  transition: background .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.route-path-clickable:hover {
+  background: rgba(37,99,235,.12);
+  color: var(--accent);
+}
+
 /* ── Operating Hours Cards ── */
 .hours-card { 
   padding:12px 14px; 
@@ -1308,7 +1323,7 @@ body {
   font-weight: 700;
   cursor: pointer;
   transition: background .2s, opacity .2s;
-}
+} 
 .get-directions-btn:hover:not(:disabled) { background: #1558b0; }
 .get-directions-btn:disabled { opacity: .45; cursor: not-allowed; }
 .route-suggest-item:last-child { 
