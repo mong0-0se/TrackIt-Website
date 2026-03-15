@@ -87,4 +87,4 @@ const CAT_INFO = {
 };
 
 // Polling Configuration
-const POLLING_INTERVAL = 10000; // 10 seconds
+const POLLING_INTERVAL = 5000; // 5 seconds

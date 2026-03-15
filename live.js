@@ -273,14 +273,14 @@ function setupRealtimeSubscription() {
     })
     .subscribe(status => {
       if (status === 'SUBSCRIBED') {
-        setDbStatus('connected', 'Connected · Real-time active', 'RT + Poll 10s');
+        setDbStatus('connected', 'Connected · Real-time active');
       } else if (status === 'CHANNEL_ERROR') {
-        setDbStatus('error', 'Real-time error — polling active', 'Poll 10s');
+        setDbStatus('error', 'Real-time error — polling active');
       }
     });
   
   startPolling();
-  setDbStatus('connected', 'Polling every 10s for vehicle changes', 'Poll 10s');
+  setDbStatus('connected', 'Polling every 10s for vehicle changes');
 }
 
 /**

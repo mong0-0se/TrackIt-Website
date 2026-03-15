@@ -154,17 +154,90 @@ function initMapControls() {
   document.getElementById('zoomIn').addEventListener('click', () => map.zoomIn());
   document.getElementById('zoomOut').addEventListener('click', () => map.zoomOut());
   
-  // Locate me
-  document.getElementById('locateMe').addEventListener('click', () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        p => map.setView([p.coords.latitude, p.coords.longitude], 15),
-        () => map.setView(CDO_CENTER, 14)
-      );
-    } else {
+// Locate me
+let userLocationMarker = null;
+let userLocationCircle = null;
+let watchId = null;
+
+document.getElementById('locateMe').addEventListener('click', () => {
+  if (!navigator.geolocation) {
+    showToast('Geolocation not supported', 'warn');
+    map.setView(CDO_CENTER, 14);
+    return;
+  }
+
+  // If already watching, stop it
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    if (userLocationMarker) { map.removeLayer(userLocationMarker); userLocationMarker = null; }
+    if (userLocationCircle) { map.removeLayer(userLocationCircle); userLocationCircle = null; }
+    document.getElementById('locateMe').style.color = '';
+    document.getElementById('locateMe').style.background = '';
+    showToast('Location tracking off');
+    return;
+  }
+
+  showToast('Finding your location…');
+
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+      const latlng = [lat, lng];
+
+      // Blue dot icon
+      const blueDot = L.divIcon({
+        html: `<div style="
+          width: 18px; height: 18px;
+          background: #2563eb;
+          border: 3px solid #fff;
+          border-radius: 50%;
+          box-shadow: 0 0 0 4px rgba(37,99,235,.3), 0 2px 8px rgba(0,0,0,.3);
+          animation: pulse 1.4s ease-in-out infinite;
+        "></div>`,
+        className: '',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
+      });
+
+      // Create or update marker
+      if (userLocationMarker) {
+        userLocationMarker.setLatLng(latlng);
+        userLocationMarker.setIcon(blueDot);
+      } else {
+        userLocationMarker = L.marker(latlng, { icon: blueDot, zIndexOffset: 1000 })
+          .addTo(map)
+          .bindPopup('<div style="font-family:DM Sans,sans-serif;font-weight:800;font-size:12px;color:#0f1f3d">You are here</div>');
+        map.setView(latlng, 16);
+        showToast('Tracking your location');
+      }
+
+      // Accuracy circle
+      if (userLocationCircle) {
+        userLocationCircle.setLatLng(latlng);
+        userLocationCircle.setRadius(accuracy);
+      } else {
+        userLocationCircle = L.circle(latlng, {
+          radius: accuracy,
+          color: '#2563eb',
+          fillColor: '#2563eb',
+          fillOpacity: 0.08,
+          weight: 1.5,
+          opacity: 0.4
+        }).addTo(map);
+      }
+
+      // Highlight the locate button as active
+      document.getElementById('locateMe').style.color = '#2563eb';
+      document.getElementById('locateMe').style.background = '#eef4ff';
+    },
+    (err) => {
+      showToast('Location access denied', 'warn');
       map.setView(CDO_CENTER, 14);
-    }
-  });
+    },
+    { enableHighAccuracy: true, maximumAge: 2000 }
+  );
+});
   
   // Layer toggle
   document.getElementById('layerBtn').addEventListener('click', () => {
