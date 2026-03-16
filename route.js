@@ -285,8 +285,8 @@ function renderSuggestions(place, routeMatches, vehicleMatches) {
           </div>
           <div class="rsi-path">${r.origin || "—"} → ${r.destination || "—"}</div>
           <div class="rsi-meta">
-            <span><i class="fa fa-location-dot"></i> ${distLabel}</span>
-            ${pts ? `<span><i class="fa fa-map-pin"></i> ${pts} pts</span>` : ""}
+            <span><i class="fa fa-location-dot"></i> ${distLabel}   </span>
+        
             ${r.distance_km ? `<span><i class="fa fa-road"></i> ${r.distance_km} km</span>` : ""}
           </div>
         </div>
@@ -399,119 +399,6 @@ function renderSuggestions(place, routeMatches, vehicleMatches) {
   }
 }
 
-// ── Route Planning Inputs ──
-
-/**
- * Initialize route planning handlers
- */
-function initRoutePlanningHandlers() {
-  const originInp = document.getElementById("routeOrigin");
-  const destInp = document.getElementById("routeDest");
-  const swapBtn = document.getElementById("swapBtn");
-  const dirBtn = document.getElementById("getDirectionsBtn");
-  let debounceTimer = null;
-
-  function bothFilled() {
-    return originInp.value.trim() !== "" && destInp.value.trim() !== "";
-  }
-
-  function syncButton() {
-    const ready = bothFilled();
-    dirBtn.style.display = ready ? "flex" : "none";
-    dirBtn.disabled = !ready;
-  }
-
-  function triggerRouteSearch(immediate = false) {
-    clearTimeout(debounceTimer);
-    if (!bothFilled()) return;
-    if (immediate) {
-      searchRouteByInputs();
-    } else {
-      debounceTimer = setTimeout(searchRouteByInputs, 800);
-    }
-  }
-
-  function searchRouteByInputs() {
-    const origin = originInp.value.trim().toLowerCase();
-    const dest = destInp.value.trim().toLowerCase();
-
-    if (!origin || !dest) return;
-
-    const matches = window.allRoutes
-      .map((r, idx) => {
-        const rOrigin = (r.origin || "").toLowerCase();
-        const rDest = (r.destination || "").toLowerCase();
-        const rName = (r.route_name || "").toLowerCase();
-
-        const originScore =
-          rOrigin.includes(origin) || rName.includes(origin) ? 1 : 0;
-        const destScore = rDest.includes(dest) || rName.includes(dest) ? 1 : 0;
-
-        return { idx, score: originScore + destScore };
-      })
-      .filter((m) => m.score > 0)
-      .sort((a, b) => b.score - a.score);
-
-    if (matches.length) {
-      selectRoute(matches[0].idx);
-      showToast(
-        `Found ${matches.length} matching route${matches.length > 1 ? "s" : ""}`,
-      );
-      matches.forEach((m) => {
-        const pl = window.routePolylines[m.idx];
-        if (pl) pl.setStyle({ weight: 5, opacity: 0.9 });
-      });
-    } else {
-      showToast("No routes found for that origin/destination", "warn");
-    }
-  }
-
-  originInp.addEventListener("input", () => { syncButton(); triggerRouteSearch(); });
-  destInp.addEventListener("input", () => { syncButton(); triggerRouteSearch(); });
-
-  [originInp, destInp].forEach((inp) => {
-    inp.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && bothFilled()) triggerRouteSearch(true);
-    });
-  });
-
-  dirBtn.addEventListener("click", () => triggerRouteSearch(true));
-
-  swapBtn.addEventListener("click", () => {
-    [originInp.value, destInp.value] = [destInp.value, originInp.value];
-    syncButton();
-    triggerRouteSearch(true);
-  });
-
-  document.getElementById("useLocBtn").addEventListener("click", function () {
-    if (!navigator.geolocation) {
-      showToast("Geolocation not supported", "warn");
-      return;
-    }
-    this.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span>Getting location…</span>';
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        window.map.setView([lat, lng], 15);
-        L.marker([lat, lng]).addTo(window.map).bindPopup("You are here!").openPopup();
-        originInp.value = `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-        this.innerHTML = '<i class="fa fa-check"></i><span>Location set!</span>';
-        showToast("Location set as starting point");
-        syncButton();
-        setTimeout(() => {
-          this.innerHTML = '<i class="fa fa-location-arrow"></i><span>Use My Current Location</span>';
-        }, 2000);
-      },
-      () => {
-        this.innerHTML = '<i class="fa fa-location-arrow"></i><span>Use My Current Location</span>';
-        originInp.value = "CDO City Center";
-        window.map.setView(CDO_CENTER, 15);
-        showToast("Using CDO City Center");
-        syncButton();
-      },
-    );
-  });
-}
 
 // Export functions
 window.fetchRoutes = fetchRoutes;

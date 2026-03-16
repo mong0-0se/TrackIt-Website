@@ -79,10 +79,6 @@ function initializeApp() {
     initSidebarHandlers();
   }
   
-  // Initialize route planning handlers
-  if (typeof initRoutePlanningHandlers === 'function') {
-    initRoutePlanningHandlers();
-  }
   
   // Load all data
   loadAllData();
