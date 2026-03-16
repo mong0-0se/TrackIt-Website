@@ -57,7 +57,6 @@ function renderBusData(positions) {
     container.innerHTML = `<div class="empty">
       <i class="fa fa-bus"></i>
       <h3>No In-Service Vehicles</h3>
-      <p>Only vehicles with status <strong>in_service</strong> appear here once GPS devices are transmitting.</p>
     </div>`;
     
     // Clear all bus markers
@@ -250,7 +249,7 @@ function setupRealtimeSubscription() {
           fetchVehicles()
         ]);
         
-        allVehicles = vehicles;
+        window.allVehicles = vehicles;
         renderBusData(positions);
         
         if (typeof renderRoutes === 'function' && window.allRoutes) {
@@ -280,7 +279,7 @@ function setupRealtimeSubscription() {
     });
   
   startPolling();
-  setDbStatus('connected', 'Polling every 10s for vehicle changes');
+  setDbStatus('connected', 'Polling every 5s for vehicle changes');
 }
 
 /**

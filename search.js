@@ -154,6 +154,7 @@ function pickPlace(p) {
   srchClear.classList.add('show');
   acDrop.classList.remove('open');
   pinPlaces([p], true);
+  if (typeof showSearchUI === 'function') showSearchUI([p], p.name);
 }
 
 /**

@@ -126,7 +126,7 @@ function pinPlaces(places, single) {
  * @param {Object} p - Place or position object
  */
 function openMapInfo(p) {
-  currentInfoPlace = p;
+  window.currentInfoPlace = p;
   document.getElementById('micTitle').textContent = p.name;
   document.getElementById('micSub').textContent = p.addr || '';
   document.getElementById('micSpeed').style.display = 'none';
@@ -138,7 +138,7 @@ function openMapInfo(p) {
  */
 function closeMapInfo() {
   document.getElementById('mapInfoCard').classList.remove('show');
-  currentInfoPlace = null;
+  window.currentInfoPlace = null;
 }
 
 // Make closeMapInfo globally accessible for onclick handlers
@@ -263,18 +263,18 @@ document.getElementById('locateMe').addEventListener('click', () => {
   });
   
   // Map info card buttons
-  document.getElementById('micDirections').addEventListener('click', () => {
-    if (currentInfoPlace) {
+document.getElementById('micDirections').addEventListener('click', () => {
+    if (window.currentInfoPlace) {
       window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${currentInfoPlace.lat},${currentInfoPlace.lng}`,
+        `https://www.google.com/maps/dir/?api=1&destination=${window.currentInfoPlace.lat},${window.currentInfoPlace.lng}`,
         '_blank'
       );
     }
   });
   
-  document.getElementById('micShare').addEventListener('click', () => {
-    if (!currentInfoPlace) return;
-    const { lat, lng } = currentInfoPlace;
+document.getElementById('micShare').addEventListener('click', () => {
+    if (!window.currentInfoPlace) return;
+    const { lat, lng } = window.currentInfoPlace;
     const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`;
     
     if (navigator.clipboard) {
@@ -295,8 +295,8 @@ window.map = map;
 window.busMarkers = busMarkers;
 window.routePolylines = routePolylines;
 window.placeMarkers = placeMarkers;
-window.smartLineLayer = smartLineLayer;
-window.currentInfoPlace = currentInfoPlace;
+window.smartLineLayer = null;
+window.currentInfoPlace = null;
 window.makeBusIcon = makeBusIcon;
 window.clearPlaceMarkers = clearPlaceMarkers;
 window.pinPlaces = pinPlaces;

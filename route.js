@@ -21,7 +21,12 @@ async function fetchRoutes() {
     .order("route_name");
 
   if (error) throw error;
-  return data || [];
+  return (data || []).map(r => ({
+    ...r,
+    coordinates: Array.isArray(r.coordinates)
+      ? r.coordinates.map(([a, b]) => (a > 90 ? [b, a] : [a, b]))
+      : []
+  }));
 }
 
 // ── Rendering ──
@@ -66,8 +71,7 @@ async function renderRoutes(routes) {
         .bindPopup(
           `<div style="font-family:'DM Sans',sans-serif;min-width:160px">
         <div style="font-size:13px;font-weight:800;color:#0f1f3d;margin-bottom:4px">${r.route_name}</div>
-        <div style="font-size:11px;color:#64748b">${r.origin} → ${r.destination}</div>
-        ${r.distance_km ? `<div style="font-size:11px;color:#16a34a;font-weight:700;margin-top:3px">📍 ${r.distance_km} km</div>` : ""}
+        
       </div>`,
         )
         .on("click", () => selectRoute(i));
@@ -78,13 +82,15 @@ async function renderRoutes(routes) {
     }
   });
 
-  // Geocode all origins and destinations in parallel
-  const geocoded = await Promise.all(routes.map(async r => ({
-    ...r,
-    originLabel: await getLabel(r.origin),
-    destLabel: await getLabel(r.destination)
-  })));
-
+// Geocode all origins and destinations in parallel
+  // Also write labels back onto window.allRoutes so computeSuggestions can use them
+  const geocoded = await Promise.all(routes.map(async (r, i) => {
+    const originLabel = await getLabel(r.origin);
+    const destLabel = await getLabel(r.destination);
+    window.allRoutes[i].originLabel = originLabel;
+    window.allRoutes[i].destLabel = destLabel;
+    return { ...r, originLabel, destLabel };
+  }));
   // Render sidebar cards
   container.innerHTML = geocoded
     .map((r, i) => {
@@ -216,13 +222,14 @@ function computeSuggestions(place) {
       const coords = Array.isArray(r.coordinates) ? r.coordinates : [];
       let dist = minDistToPolyline(destPt, coords);
 
-      if (dist === Infinity) {
-        const haystack =
-          `${r.origin} ${r.destination} ${r.route_name}`.toLowerCase();
+if (dist === Infinity) {
+        const haystack = [
+          r.route_name, r.origin, r.destination,
+          r.originLabel, r.destLabel
+        ].filter(Boolean).join(' ').toLowerCase();
         const needle = place.name.toLowerCase();
         dist = haystack.includes(needle) ? 0.004 : 50;
       }
-
       return { route: r, routeIdx: idx, dist };
     })
     .filter((m) => m.dist < ROUTE_SUGGEST_THRESHOLD_KM)
@@ -505,34 +512,6 @@ function initRoutePlanningHandlers() {
     );
   });
 }
-
-// Use location button
-document.getElementById("useLocBtn").addEventListener("click", function () {
-  if (!navigator.geolocation) {
-    showToast("Geolocation not supported", "warn");
-    return;
-  }
-  this.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span>Getting location…</span>';
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const { latitude: lat, longitude: lng } = pos.coords;
-      window.map.setView([lat, lng], 15);
-      L.marker([lat, lng]).addTo(window.map).bindPopup("You are here!").openPopup();
-      document.getElementById("routeOrigin").value = `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-      this.innerHTML = '<i class="fa fa-check"></i><span>Location set!</span>';
-      showToast("Location set");
-      setTimeout(() => {
-        this.innerHTML = '<i class="fa fa-location-arrow"></i><span>Use My Current Location</span>';
-      }, 2000);
-    },
-    () => {
-      this.innerHTML = '<i class="fa fa-location-arrow"></i><span>Use My Current Location</span>';
-      document.getElementById("routeOrigin").value = "CDO City Center";
-      window.map.setView(CDO_CENTER, 15);
-      showToast("Using CDO City Center");
-    },
-  );
-});
 
 // Export functions
 window.fetchRoutes = fetchRoutes;

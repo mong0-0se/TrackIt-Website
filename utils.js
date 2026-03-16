@@ -113,7 +113,7 @@ function setDbStatus(state, msg, mode) {
   document.getElementById('dbStatusText').textContent = msg;
   if (mode !== undefined) {
     document.getElementById('dbMode').textContent = mode;
-  }
+  } 
 }
 
 /**

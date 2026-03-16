@@ -47,7 +47,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="live"><i class="fa fa-satellite-dish"></i> Live<span class="tab-badge" id="tabBusCount">0</span></button>
       <button class="tab" data-tab="routes"><i class="fa fa-route"></i> Routes<span class="tab-badge" id="tabRouteCount">0</span></button>
-      <button class="tab" data-tab="schedule"><i class="fa fa-clock"></i> Operating Hours</button>
+      <button class="tab" data-tab="schedule"><i class="fa fa-clock"></i> Schedule</button>
     </div>
     
     <div class="content">
@@ -99,7 +99,7 @@
         </div>
         
         <div id="liveDefaultBlock">
-          <div class="sec-label"><i class="fa fa-bus"></i> Active Vehicles (In Service)</div>
+          <div class="sec-label"><i class="fa fa-bus"></i> Active Vehicles</div>
           <div id="busCards"><div class="loading-block"><div class="spinner"></div>Loading from Supabase…</div></div>
         </div>
       </div>
@@ -137,7 +137,7 @@
       
       <!-- Operating Hours Tab -->
       <div class="tab-pane" id="tab-schedule">
-        <div class="sec-label"><i class="fa fa-calendar-days"></i> Schedule by Route</div>
+        <div class="sec-label"><i class="fa fa-calendar-days"></i> Operating Hours</div>
         <div id="scheduleList"><div class="loading-block"><div class="spinner"></div>Loading operating hours…</div></div>
       </div>
     </div>
