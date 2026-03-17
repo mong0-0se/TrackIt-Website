@@ -94,11 +94,6 @@ function buildPlaceCard(p, focused = false) {
         <span class="pc-type"><i class="fa ${c.icon}" style="font-size:8px"></i>${c.label}</span>
       </div>
     </div>
-    <div class="pc-actions">
-      <button class="pc-btn btn-directions"><i class="fa fa-route"></i> Directions</button>
-      <button class="pc-btn btn-route"><i class="fa fa-bus"></i> Plan Route</button>
-      <button class="pc-btn btn-map"><i class="fa fa-map"></i> Map</button>
-    </div>
   </div>`;
 }
 

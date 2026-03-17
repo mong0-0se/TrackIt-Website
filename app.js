@@ -57,7 +57,7 @@ async function loadAllData() {
  * Initialize all application modules
  */
 function initializeApp() {
-  console.log('🚀 Initializing TrackIt CDO...');
+  console.log('Initializing TrackIt CDO...');
   
   // Initialize map controls
   if (typeof initMapControls === 'function') {
@@ -83,7 +83,7 @@ function initializeApp() {
   // Load all data
   loadAllData();
   
-  console.log('✅ TrackIt CDO initialized');
+  console.log('TrackIt CDO initialized');
 }
 
 // Start the application when DOM is ready

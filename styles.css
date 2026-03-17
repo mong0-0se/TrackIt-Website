@@ -1649,7 +1649,7 @@ body {
   background: var(--navy-light);
 }
 
-.map-info-card {
+/* .map-info-card {
   position: fixed;
   bottom: 70px;
   right: 14px;
@@ -1728,7 +1728,7 @@ body {
   background: var(--navy);
   color: #fff;
   border-color: var(--navy);
-}
+} */
 
 /* ── Toast Notification ── */
 .toast {

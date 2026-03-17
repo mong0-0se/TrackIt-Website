@@ -82,8 +82,8 @@ function clearPlaceMarkers() {
  */
 function pinPlaces(places, single) {
   clearPlaceMarkers();
-  if (typeof closeMapInfo === 'function') closeMapInfo();
-  
+window.map.closePopup();
+
   if (!places.length) return;
   
   places.forEach((p, i) => {
@@ -127,22 +127,28 @@ function pinPlaces(places, single) {
  */
 function openMapInfo(p) {
   window.currentInfoPlace = p;
-  document.getElementById('micTitle').textContent = p.name;
-  document.getElementById('micSub').textContent = p.addr || '';
-  document.getElementById('micSpeed').style.display = 'none';
-  document.getElementById('mapInfoCard').classList.add('show');
+
+  L.popup({ closeButton: true, maxWidth: 260, className: 'trackit-popup' })
+    .setLatLng([p.lat, p.lng])
+    .setContent(`
+      <div style="font-family:'DM Sans',sans-serif;min-width:180px;padding:2px 0">
+        <div style="font-size:13px;font-weight:800;color:#0f1f3d">${p.name}</div>
+        ${p.addr ? `<div style="font-size:11px;color:#64748b;margin-top:3px">${p.addr}</div>` : ''}
+      </div>
+    `)
+    .openOn(window.map);
 }
 
 /**
  * Close map info card
  */
-function closeMapInfo() {
-  document.getElementById('mapInfoCard').classList.remove('show');
-  window.currentInfoPlace = null;
-}
+// function closeMapInfo() {
+//   document.getElementById('mapInfoCard').classList.remove('show');
+//   window.currentInfoPlace = null;
+// }
 
 // Make closeMapInfo globally accessible for onclick handlers
-window.closeMapInfo = closeMapInfo;
+// window.closeMapInfo = closeMapInfo;
 
 // ── Map Controls ──
 
@@ -263,26 +269,19 @@ document.getElementById('locateMe').addEventListener('click', () => {
   });
   
   // Map info card buttons
-document.getElementById('micDirections').addEventListener('click', () => {
-    if (window.currentInfoPlace) {
-      window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${window.currentInfoPlace.lat},${window.currentInfoPlace.lng}`,
-        '_blank'
-      );
-    }
-  });
+
   
-document.getElementById('micShare').addEventListener('click', () => {
-    if (!window.currentInfoPlace) return;
-    const { lat, lng } = window.currentInfoPlace;
-    const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`;
+// document.getElementById('micShare').addEventListener('click', () => {
+//     if (!window.currentInfoPlace) return;
+//     const { lat, lng } = window.currentInfoPlace;
+//     const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`;
     
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(() => showToast('Link copied!'));
-    } else {
-      showToast('Copy not supported', 'warn');
-    }
-  });
+//     if (navigator.clipboard) {
+//       navigator.clipboard.writeText(url).then(() => showToast('Link copied!'));
+//     } else {
+//       showToast('Copy not supported', 'warn');
+//     }
+//   });
   
   // FAB button
   document.getElementById('fab').addEventListener('click', () => {

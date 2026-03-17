@@ -84,8 +84,7 @@ function renderBusData(positions) {
         icon: makeBusIcon(id, pos.heading, true) 
       })
       .addTo(window.map)
-      .on('click', () => openBusInfo(pos));
-    }
+.on('click', function() { openBusInfo(this._posData); });    }
     
     // Store position data on marker
     window.busMarkers[id]._posData = pos;
@@ -106,9 +105,7 @@ function renderBusData(positions) {
     const d = v.driver || {};
     const color = '#2563eb'; 
     const name = v.vehicle_name || pos.device_name || pos.device_id;
-    const speed = pos.speed_kmh != null ? `${parseFloat(pos.speed_kmh).toFixed(1)} km/h` : 'N/A';
-    const updAt = pos.updated_at ? new Date(pos.updated_at).toLocaleTimeString() : '—';
-    
+    const speed = pos.speed_kmh != null ? `${parseFloat(pos.speed_kmh).toFixed(1)} km/h` : 'N/A';    
 return `<div class="card active-bus" onclick="focusBus('${pos.device_id}')">
   <div class="card-row">
     <div style="display:flex;align-items:center;gap:10px">
@@ -132,7 +129,6 @@ return `<div class="card active-bus" onclick="focusBus('${pos.device_id}')">
     <div class="meta-row">
       <div class="meta-item"><i class="fa fa-gauge-high"></i> ${speed}</div>
       <div class="meta-item"><i class="fa fa-user"></i> ${d.name || 'Unassigned'}</div>
-      <div class="meta-item"><i class="fa fa-clock"></i> ${updAt}</div>
     </div>
   </div>
 </div>`;
@@ -163,28 +159,33 @@ function openBusInfo(pos) {
   const r = v.route || {};
   const d = v.driver || {};
   const name = v.vehicle_name || pos.device_name || pos.device_id;
-  
-  document.getElementById('micTitle').textContent = 
-    `${v.plate_number || name}${v.plate_number ? ' · ' + name : ''}`;
-  document.getElementById('micSub').textContent = 
-    r.route_name ? `${r.origin} → ${r.destination}` : (d.name || 'No driver assigned');
-  
-  const speedEl = document.getElementById('micSpeed');
-  if (pos.speed_kmh != null) {
-    const hdgStr = pos.heading != null ? ` · Heading ${Math.round(pos.heading)}°` : '';
-    speedEl.textContent = `⚡ ${parseFloat(pos.speed_kmh).toFixed(1)} km/h${hdgStr}`;
-    speedEl.style.display = 'block';
-  } else {
-    speedEl.style.display = 'none';
-  }
-  
+
   window.currentInfoPlace = {
     lat: parseFloat(pos.latitude),
     lng: parseFloat(pos.longitude),
     name
   };
-  
-  document.getElementById('mapInfoCard').classList.add('show');
+
+  const speed = pos.speed_kmh != null
+    ? `<div style="font-size:11px;color:#16a34a;font-weight:700;margin-top:5px">
+        ⚡ ${parseFloat(pos.speed_kmh).toFixed(1)} km/h${pos.heading != null ? ` · Heading ${Math.round(pos.heading)}°` : ''}
+       </div>`
+    : '';
+
+  L.popup({ closeButton: true, maxWidth: 260, className: 'trackit-popup' })
+    .setLatLng([parseFloat(pos.latitude), parseFloat(pos.longitude)])
+    .setContent(`
+      <div style="font-family:'DM Sans',sans-serif;min-width:180px;padding:2px 0">
+        <div style="font-size:13px;font-weight:800;color:#0f1f3d">
+          ${v.plate_number || name}${v.plate_number ? ' · ' + name : ''}
+        </div>
+        <div style="font-size:11px;color:#64748b;margin-top:3px">
+  ${r.route_name || (d.name || 'No driver assigned')}
+</div>
+        ${speed}
+      </div>
+    `)
+    .openOn(window.map);
 }
 
 // ── Real-time Updates ──
@@ -228,12 +229,7 @@ function setupRealtimeSubscription() {
         renderBusData(positions);
         setDbStatus('connected', `Connected · ${positions.length} in-service · ${new Date().toLocaleTimeString()}`);
         
-        if (payload.eventType === 'UPDATE') {
-          showNotif(
-            'GPS Update',
-            `Position updated: ${payload.new.device_name || payload.new.device_id}`
-          );
-        }
+
       } catch (e) {
         console.error('Realtime GPS error:', e);
       }
