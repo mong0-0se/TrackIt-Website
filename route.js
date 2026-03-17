@@ -82,7 +82,7 @@ async function renderRoutes(routes) {
     }
   });
 
-// Geocode all origins and destinations in parallel
+  // Geocode all origins and destinations in parallel
   // Also write labels back onto window.allRoutes so computeSuggestions can use them
   const geocoded = await Promise.all(routes.map(async (r, i) => {
     const originLabel = await getLabel(r.origin);
@@ -91,6 +91,7 @@ async function renderRoutes(routes) {
     window.allRoutes[i].destLabel = destLabel;
     return { ...r, originLabel, destLabel };
   }));
+
   // Render sidebar cards
   container.innerHTML = geocoded
     .map((r, i) => {
@@ -210,19 +211,22 @@ function fitAllRoutes() {
 // ── Route Suggestions ──
 
 /**
- * Compute route and vehicle suggestions for a place
+ * Compute route and vehicle suggestions for a place.
+ * Vehicles are derived from suggested routes only — not GPS proximity.
  * @param {Object} place - Place object with lat/lng
  * @returns {Object} {routeMatches, vehicleMatches}
  */
 function computeSuggestions(place) {
   const destPt = [place.lat, place.lng];
 
+  // Step 1: find routes near the searched place
   const routeMatches = window.allRoutes
     .map((r, idx) => {
       const coords = Array.isArray(r.coordinates) ? r.coordinates : [];
       let dist = minDistToPolyline(destPt, coords);
 
-if (dist === Infinity) {
+      if (dist === Infinity) {
+        // No coordinates — fall back to text match on route name/labels
         const haystack = [
           r.route_name, r.origin, r.destination,
           r.originLabel, r.destLabel
@@ -230,68 +234,83 @@ if (dist === Infinity) {
         const needle = place.name.toLowerCase();
         dist = haystack.includes(needle) ? 0.004 : 50;
       }
+
       return { route: r, routeIdx: idx, dist };
     })
     .filter((m) => m.dist < ROUTE_SUGGEST_THRESHOLD_KM)
     .sort((a, b) => a.dist - b.dist)
     .slice(0, 5);
 
-  const positionsArr = Object.values(window.busMarkers)
-    .map((m) => m._posData)
-    .filter(Boolean);
+  // Step 2: collect in-service vehicles that belong to those suggested routes
+  // Build a lookup of live GPS positions keyed by vehicle id
+  const posByVehicleId = {};
+  Object.values(window.busMarkers).forEach(marker => {
+    const pos = marker._posData;
+    if (pos?.vehicle_id) {
+      posByVehicleId[pos.vehicle_id] = pos;
+    }
+  });
 
-  const vehicleMatches = positionsArr
-    .map((pos) => ({
-      pos,
-      dist: haversine(destPt, [
-        parseFloat(pos.latitude),
-        parseFloat(pos.longitude),
-      ]),
-    }))
-    .sort((a, b) => a.dist - b.dist)
-    .slice(0, 3);
+  const vehicleMatches = routeMatches.flatMap(m => {
+    const routeVehicles = (window.allVehicles || []).filter(
+      v => v.route_id === m.route.id && v.status === 'in_service'
+    );
+
+    return routeVehicles.map(v => ({
+      vehicle: v,
+      route: m.route,
+      routeIdx: m.routeIdx,
+      // Attach live GPS pos if this vehicle has an active marker
+      pos: posByVehicleId[v.id] || null
+    }));
+  });
 
   return { routeMatches, vehicleMatches };
 }
 
 /**
- * Render route and vehicle suggestions
+ * Render route and vehicle suggestions.
+ * Vehicle panel is hidden entirely when no routes are suggested.
  * @param {Object} place - Place object
  * @param {Array} routeMatches - Array of route matches
- * @param {Array} vehicleMatches - Array of vehicle matches
+ * @param {Array} vehicleMatches - Array of vehicle matches (route-derived)
  */
 function renderSuggestions(place, routeMatches, vehicleMatches) {
   const routePanel = document.getElementById("suggestedRoutesPanel");
   const routeList = document.getElementById("suggestedRoutesList");
   const routeCount = document.getElementById("suggestedRoutesCount");
 
+  // Always remove the smart line — no longer used for distance display
+  if (window.smartLineLayer) {
+    window.map.removeLayer(window.smartLineLayer);
+    window.smartLineLayer = null;
+  }
+
+  // ── Route Panel ──
   if (routeMatches.length) {
     routeCount.textContent = `${routeMatches.length} route${routeMatches.length !== 1 ? "s" : ""}`;
 
     routeList.innerHTML = routeMatches
       .map((m, i) => {
         const r = m.route;
-        const color =
-          r.color || VEHICLE_COLORS[m.routeIdx % VEHICLE_COLORS.length];
+        const color = r.color || VEHICLE_COLORS[m.routeIdx % VEHICLE_COLORS.length];
         const distLabel = `${(m.dist * 1000).toFixed(1)} m from route`;
-        const pts = r.coordinates?.length || 0;
 
         return `<div class="route-suggest-item ${i === 0 ? "best" : ""}" data-ridx="${m.routeIdx}">
-        <div class="rsi-dot" style="background:${color}"></div>
-        <div class="rsi-body">
-          <div class="rsi-name">
-            ${r.route_name}
-            ${i === 0 ? '<span class="rsi-best-tag">Best match</span>' : ""}
+          <div class="rsi-dot" style="background:${color}"></div>
+          <div class="rsi-body">
+            <div class="rsi-name">
+              ${r.route_name}
+              ${i === 0 ? '<span class="rsi-best-tag">Best match</span>' : ""}
+            </div>
+            <div class="rsi-path">${r.origin || "—"} → ${r.destination || "—"}</div>
+            <div class="rsi-meta">
+              <span><i class="fa fa-location-dot"></i> ${distLabel}</span>
+              ${r.distance_km ? `<span><i class="fa fa-road"></i> ${r.distance_km} km</span>` : ""}
+            </div>
           </div>
-          <div class="rsi-path">${r.origin || "—"} → ${r.destination || "—"}</div>
-          <div class="rsi-meta">
-            <span><i class="fa fa-location-dot"></i> ${distLabel}   </span>
-        
-            ${r.distance_km ? `<span><i class="fa fa-road"></i> ${r.distance_km} km</span>` : ""}
-          </div>
-        </div>
-        <button class="rsi-action" data-ridx="${m.routeIdx}">View</button>
-      </div>`;
+          <button class="rsi-action" data-ridx="${m.routeIdx}">View</button>
+        </div>`;
       })
       .join("");
 
@@ -314,91 +333,82 @@ function renderSuggestions(place, routeMatches, vehicleMatches) {
     routePanel.style.display = "none";
   }
 
+  // ── Vehicle Panel ──
   const vPanel = document.getElementById("nearestVehiclesPanel");
   const vList = document.getElementById("nearestVehiclesList");
   const vCount = document.getElementById("nearestVehiclesCount");
 
-  if (window.smartLineLayer) {
-    window.map.removeLayer(window.smartLineLayer);
-    window.smartLineLayer = null;
+  // No routes suggested → hide vehicle panel entirely
+  if (!routeMatches.length) {
+    vPanel.style.display = "none";
+    return;
   }
 
-  if (vehicleMatches.length) {
-    vCount.textContent = `${vehicleMatches.length} vehicle${vehicleMatches.length !== 1 ? "s" : ""}`;
-
-    const nearest = vehicleMatches[0];
-    window.smartLineLayer = L.polyline(
-      [
-        [parseFloat(nearest.pos.latitude), parseFloat(nearest.pos.longitude)],
-        [place.lat, place.lng],
-      ],
-      {
-        color: getDeviceColor(nearest.pos.device_id),
-        weight: 2,
-        opacity: 0.6,
-        dashArray: "6 8",
-      },
-    ).addTo(window.map);
-
-    vList.innerHTML = vehicleMatches
-      .map((m, i) => {
-        const pos = m.pos;
-        const v = pos.vehicle || {};
-        const r = v.route || {};
-        const d = v.driver || {};
-        const color = getDeviceColor(pos.device_id);
-        const name = v.vehicle_name || pos.device_name || pos.device_id;
-        const distKm =
-          m.dist < 1
-            ? `${(m.dist * 1000).toFixed(0)} m away`
-            : `${m.dist.toFixed(1)} km away`;
-        const speed =
-          pos.speed_kmh != null
-            ? `${parseFloat(pos.speed_kmh).toFixed(0)} km/h`
-            : "—";
-        const route = r.route_name
-          ? `${r.origin} → ${r.destination}`
-          : "No route assigned";
-
-        return `<div class="vehicle-suggest-item" data-vid="${pos.device_id}">
-        <div class="vsi-icon" style="background:${color}20;color:${color}">
-          <i class="fa fa-bus"></i>
-        </div>
-        <div class="vsi-body">
-          <div class="vsi-name">
-            ${name}
-            ${i === 0 ? '<span class="vsi-nearest-tag">Nearest</span>' : ""}
-          </div>
-          <div class="vsi-route">${route}</div>
-          <div class="vsi-meta">
-            <span><i class="fa fa-gauge-high"></i> ${speed}</span>
-            <span><i class="fa fa-user"></i> ${d.name || "No driver"}</span>
-          </div>
-        </div>
-        <div class="vsi-dist">${distKm}</div>
-      </div>`;
-      })
-      .join("");
-
-    vList.querySelectorAll(".vehicle-suggest-item").forEach((el) => {
-      el.addEventListener("click", () => {
-        focusBus(el.dataset.vid);
-        const vname = el
-          .querySelector(".vsi-name")
-          .childNodes[0].textContent.trim();
-        showToast(`Tracking ${vname}`);
-      });
-    });
-
-    vPanel.style.display = "block";
-  } else {
+  // Routes suggested but no in-service vehicles on any of them
+  if (!vehicleMatches.length) {
+    vCount.textContent = "0 vehicles";
     vList.innerHTML = `<div class="suggest-empty">
-      <i class="fa fa-satellite-dish"></i> No live vehicles currently in service
+      <i class="fa fa-satellite-dish"></i> No in-service vehicles on suggested routes
     </div>`;
     vPanel.style.display = "block";
+    return;
   }
-}
 
+  // Render vehicles grouped under their route
+  vCount.textContent = `${vehicleMatches.length} vehicle${vehicleMatches.length !== 1 ? "s" : ""}`;
+
+  vList.innerHTML = vehicleMatches.map((m, i) => {
+    const v = m.vehicle;
+    const r = m.route;
+    const pos = m.pos;
+    const color = r.color || VEHICLE_COLORS[m.routeIdx % VEHICLE_COLORS.length];
+    const speed = pos?.speed_kmh != null
+      ? `${parseFloat(pos.speed_kmh).toFixed(0)} km/h`
+      : "—";
+    const driverName = v.driver?.name || "No driver";
+    const deviceId = pos?.device_id || '';
+
+    return `<div class="vehicle-suggest-item" data-vid="${v.id}" data-device="${deviceId}">
+      <div class="vsi-icon" style="background:${color}20;color:${color}">
+        <i class="fa fa-bus"></i>
+      </div>
+      <div class="vsi-body">
+        <div class="vsi-name">
+          ${v.plate_number || v.vehicle_name || "—"}
+          ${i === 0 ? '<span class="vsi-nearest-tag">On route</span>' : ""}
+        </div>
+        <div class="vsi-route">${r.origin || "—"} → ${r.destination || "—"}</div>
+        <div class="vsi-meta">
+          <span><i class="fa fa-gauge-high"></i> ${speed}</span>
+          <span><i class="fa fa-user"></i> ${driverName}</span>
+          <span style="color:${color};font-weight:700">
+            <i class="fa fa-route"></i> ${r.route_name}
+          </span>
+        </div>
+      </div>
+      ${pos
+        ? `<div class="vsi-dist" style="color:var(--success)"><i class="fa fa-circle" style="font-size:6px"></i> Live</div>`
+        : `<div class="vsi-dist" style="color:var(--text-muted)"><i class="fa fa-circle" style="font-size:6px"></i> No GPS</div>`
+      }
+    </div>`;
+  }).join("");
+
+  vList.querySelectorAll(".vehicle-suggest-item").forEach((el) => {
+    el.addEventListener("click", () => {
+      const deviceId = el.dataset.device;
+      const label = el.querySelector(".vsi-name").childNodes[0].textContent.trim();
+
+      if (deviceId) {
+        focusBus(deviceId);
+        showToast(`Tracking ${label}`);
+      } else {
+        showToast(`${label} has no active GPS position`, "warn");
+      }
+    });
+  });
+
+  vPanel.style.display = "block";
+}
 
 // Export functions
 window.fetchRoutes = fetchRoutes;
