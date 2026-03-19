@@ -18,30 +18,41 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
  * @returns {Promise<Array>} Array of positions with vehicle data
  */
 async function fetchGpsPositions() {
-  // Get all in-service vehicles
+  // Get only active clients first
+  const { data: activeClients, error: cErr } = await sb
+    .from('client')
+    .select('id')
+    .eq('status', 'active');
+
+  if (cErr) throw cErr;
+  if (!activeClients?.length) return [];
+
+  const activeClientIds = activeClients.map(c => c.id);
+
+  // Get in-service vehicles belonging to active clients only
   const { data: inService, error: vErr } = await sb
     .from('vehicle')
     .select('id, vehicle_name, plate_number, status, route:route_id(route_name, origin, destination), driver:driver_id(name, contact)')
-    .eq('status', 'in_service');
-    
+    .eq('status', 'in_service')
+    .in('client_id', activeClientIds);
+
   if (vErr) throw vErr;
   if (!inService?.length) return [];
-  
+
   const vehicleMap = Object.fromEntries(inService.map(v => [v.id, v]));
-  
+
   // Get GPS positions for these vehicles
   const { data: positions, error: pErr } = await sb
     .from('gps_position')
     .select('device_id, device_name, latitude, longitude, speed_kmh, heading, accuracy, updated_at, vehicle_id')
     .in('vehicle_id', Object.keys(vehicleMap));
-    
+
   if (pErr) throw pErr;
-  
+
   return (positions || [])
     .map(pos => ({ ...pos, vehicle: vehicleMap[pos.vehicle_id] || null }))
     .filter(pos => pos.vehicle && pos.latitude && pos.longitude);
 }
-
 // ── Rendering ──
 
 /**

@@ -9,8 +9,8 @@
  * Initialize tab switching handlers
  */
 function initTabHandlers() {
-  document.querySelectorAll('.tab').forEach(t => {
-    t.addEventListener('click', () => switchTab(t.dataset.tab));
+  document.querySelectorAll(".tab").forEach((t) => {
+    t.addEventListener("click", () => switchTab(t.dataset.tab));
   });
 }
 
@@ -20,8 +20,12 @@ function initTabHandlers() {
  * Initialize sidebar collapse/expand handlers
  */
 function initSidebarHandlers() {
-  document.getElementById('collapseBtn').addEventListener('click', toggleSidebar);
-  document.getElementById('floatToggle').addEventListener('click', toggleSidebar);
+  document
+    .getElementById("collapseBtn")
+    .addEventListener("click", toggleSidebar);
+  document
+    .getElementById("floatToggle")
+    .addEventListener("click", toggleSidebar);
 }
 
 // ── View Toggles ──
@@ -30,11 +34,11 @@ function initSidebarHandlers() {
  * Show live default view (in-service vehicles)
  */
 function showLiveDefault() {
-  document.getElementById('liveDefaultBlock').style.display = 'block';
-  document.getElementById('searchResultsBlock').style.display = 'none';
-  document.getElementById('suggestedRoutesPanel').style.display = 'none';
-  document.getElementById('nearestVehiclesPanel').style.display = 'none';
-  
+  document.getElementById("liveDefaultBlock").style.display = "block";
+  document.getElementById("searchResultsBlock").style.display = "none";
+  document.getElementById("suggestedRoutesPanel").style.display = "none";
+  document.getElementById("nearestVehiclesPanel").style.display = "none";
+
   if (window.smartLineLayer) {
     window.map.removeLayer(window.smartLineLayer);
     window.smartLineLayer = null;
@@ -47,32 +51,36 @@ function showLiveDefault() {
  * @param {String} query - Search query
  */
 function showSearchUI(places, query) {
-  document.getElementById('liveDefaultBlock').style.display = 'none';
-  document.getElementById('searchResultsBlock').style.display = 'block';
-  document.getElementById('suggestedRoutesPanel').style.display = 'none';
-  document.getElementById('nearestVehiclesPanel').style.display = 'none';
-  
-  const list = document.getElementById('searchResultsList');
-  
+  document.getElementById("liveDefaultBlock").style.display = "none";
+  document.getElementById("searchResultsBlock").style.display = "block";
+  document.getElementById("suggestedRoutesPanel").style.display = "none";
+  document.getElementById("nearestVehiclesPanel").style.display = "none";
+
+  const list = document.getElementById("searchResultsList");
+
   if (places === null) {
     list.innerHTML = `<div class="loading-block"><div class="spinner"></div>Searching in CDO…</div>`;
     return;
   }
-  
+
   if (!places.length) {
     list.innerHTML = `<div class="empty"><i class="fa fa-magnifying-glass"></i><h3>No Results</h3><p>No places matched "${query}"</p></div>`;
     return;
   }
-  
-  list.innerHTML = `<div class="sec-label"><i class="fa fa-list"></i> ${places.length} place${places.length !== 1 ? 's' : ''} found</div>` + 
-    places.map((p, i) => buildPlaceCard(p, i === 0)).join('');
-  
+
+  list.innerHTML =
+    `<div class="sec-label"><i class="fa fa-list"></i> ${places.length} place${places.length !== 1 ? "s" : ""} found</div>` +
+    places.map((p, i) => buildPlaceCard(p, i === 0)).join("");
+
   // Compute and render suggestions for first place
-  if (typeof computeSuggestions === 'function' && typeof renderSuggestions === 'function') {
+  if (
+    typeof computeSuggestions === "function" &&
+    typeof renderSuggestions === "function"
+  ) {
     const { routeMatches, vehicleMatches } = computeSuggestions(places[0]);
     renderSuggestions(places[0], routeMatches, vehicleMatches);
   }
-  
+
   // Attach event handlers
   attachPlaceCardHandlers(places);
 }
@@ -85,7 +93,7 @@ function showSearchUI(places, query) {
  */
 function buildPlaceCard(p, focused = false) {
   const c = CAT_INFO[p.cat] || CAT_INFO.default;
-  return `<div class="place-card ${focused ? 'focused' : ''}">
+  return `<div class="place-card ${focused ? "focused" : ""}">
     <div class="pc-row">
       <div class="pc-icon ${c.cls}"><i class="fa ${c.icon}"></i></div>
       <div class="pc-body">
@@ -102,54 +110,59 @@ function buildPlaceCard(p, focused = false) {
  * @param {Array} places - Array of place objects
  */
 function attachPlaceCardHandlers(places) {
-  const list = document.getElementById('searchResultsList');
-  
+  const list = document.getElementById("searchResultsList");
+
   // Click on card
-  list.querySelectorAll('.place-card').forEach((card, i) => {
-    card.addEventListener('click', () => {
-      list.querySelectorAll('.place-card').forEach(c => c.classList.remove('focused'));
-      card.classList.add('focused');
+  list.querySelectorAll(".place-card").forEach((card, i) => {
+    card.addEventListener("click", () => {
+      list
+        .querySelectorAll(".place-card")
+        .forEach((c) => c.classList.remove("focused"));
+      card.classList.add("focused");
       window.map.setView([places[i].lat, places[i].lng], 17);
-      
-      if (typeof openMapInfo === 'function') {
+
+      if (typeof openMapInfo === "function") {
         openMapInfo(places[i]);
       }
-      
-      if (typeof computeSuggestions === 'function' && typeof renderSuggestions === 'function') {
+
+      if (
+        typeof computeSuggestions === "function" &&
+        typeof renderSuggestions === "function"
+      ) {
         const { routeMatches, vehicleMatches } = computeSuggestions(places[i]);
         renderSuggestions(places[i], routeMatches, vehicleMatches);
       }
     });
   });
-  
+
   // Directions button
-  list.querySelectorAll('.btn-directions').forEach((btn, i) => {
-    btn.addEventListener('click', e => {
+  list.querySelectorAll(".btn-directions").forEach((btn, i) => {
+    btn.addEventListener("click", (e) => {
       e.stopPropagation();
       window.open(
         `https://www.google.com/maps/dir/?api=1&destination=${places[i].lat},${places[i].lng}`,
-        '_blank'
+        "_blank",
       );
     });
   });
-  
+
   // Map button
-  list.querySelectorAll('.btn-map').forEach((btn, i) => {
-    btn.addEventListener('click', e => {
+  list.querySelectorAll(".btn-map").forEach((btn, i) => {
+    btn.addEventListener("click", (e) => {
       e.stopPropagation();
       window.open(
         `https://www.openstreetmap.org/?mlat=${places[i].lat}&mlon=${places[i].lng}#map=18/${places[i].lat}/${places[i].lng}`,
-        '_blank'
+        "_blank",
       );
     });
   });
-  
+
   // Route planning button
-  list.querySelectorAll('.btn-route').forEach((btn, i) => {
-    btn.addEventListener('click', e => {
+  list.querySelectorAll(".btn-route").forEach((btn, i) => {
+    btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      switchTab('routes');
-      document.getElementById('routeDest').value = places[i].name;
+      switchTab("routes");
+      document.getElementById("routeDest").value = places[i].name;
       showToast(`Destination set: ${places[i].name}`);
     });
   });
